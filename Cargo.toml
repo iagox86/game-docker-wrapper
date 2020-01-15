@@ -1,0 +1,11 @@
+[package]
+name = "game-loader"
+version = "0.1.0"
+authors = ["iagox86 <ron-git@skullsecurity.org>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "0.2", features = ["full"] }
+futures = "0.3"
