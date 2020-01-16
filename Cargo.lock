@@ -173,8 +173,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "game-loader"
-version = "0.1.0"
+name = "game-docker-wrapper"
+version = "1.0.0"
 dependencies = [
  "clap",
  "futures",
@@ -312,16 +312,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num_cpus"
-version = "1.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76dac5ed2a876980778b8b85f75a71b6cbf0db0b1232ee12f826bccb00d09d72"
-dependencies = [
- "hermit-abi",
- "libc",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -436,18 +426,14 @@ checksum = "ffa2fdcfa937b20cb3c822a635ceecd5fc1a27a6a474527e5516aa24b8c8820a"
 dependencies = [
  "bytes",
  "fnv",
- "futures-core",
- "iovec",
  "lazy_static",
  "libc",
  "memchr",
  "mio",
  "mio-named-pipes",
  "mio-uds",
- "num_cpus",
  "pin-project-lite",
  "signal-hook-registry",
- "slab",
  "tokio-macros",
  "winapi 0.3.8",
 ]
