@@ -37,6 +37,44 @@ async fn input_task(child_stdin: Arc<Mutex<process::ChildStdin>>) {
   }
 }
 
+async fn wait_for_signal(child_stdin: Arc<Mutex<process::ChildStdin>>, kill_command: Option<String>, newline_before_kill: bool, newline_after_kill: bool, debug: bool) {
+  // Wait for a terminate signal - this waits until we receive sigterm
+  signal(SignalKind::terminate()).expect("stream error").recv().await;
+  if debug {
+    match &kill_command {
+      Some(kill_command) => eprintln!("SIGTERM received! Sending kill command to the child: {}", kill_command),
+      None => eprintln!("SIGTERM received! Performing a clean shutdown"),
+    }
+  }
+
+  // Grab a lock on the child_stdin process (and don't ever release it)
+  let mut child_stdin = child_stdin.lock().await;
+
+  // Optionally write the newlines and kill-command
+  if newline_before_kill {
+    child_stdin.write_all("\n".as_bytes()).await.unwrap_or_else(|e| {
+      eprintln!("Error writing kill command to child: {}", e);
+      exit(1);
+    });
+  }
+  if let Some(kill_command) = kill_command {
+    child_stdin.write_all(kill_command.as_bytes()).await.unwrap_or_else(|e| {
+      eprintln!("Error writing kill command to child: {}", e);
+      exit(1);
+    });
+  }
+  if newline_after_kill {
+    child_stdin.write_all("\n".as_bytes()).await.unwrap_or_else(|e| {
+      eprintln!("Error writing kill command to child: {}", e);
+      exit(1);
+    });
+  }
+
+  if debug {
+    eprintln!("Waiting for child process to exit...");
+  }
+}
+
 #[tokio::main]
 async fn main() {
   let matches = App::new("game-docker-wrapper")
@@ -90,7 +128,10 @@ async fn main() {
 
   // Get the commandline arguments
   let debug = matches.is_present("debug");
-  let kill_command = matches.value_of("kill-command");
+  let kill_command = match matches.value_of("kill-command") {
+      Some(s) => Some(String::from(s)),
+      None => None,
+  };
   let newline_before_kill = !matches.is_present("no-newline-before-kill");
   let newline_after_kill = !matches.is_present("no-newline-after-kill");
 
@@ -124,43 +165,11 @@ async fn main() {
   // Create a task that feeds the child stdin from our stdin
   task::spawn(input_task(child_stdin.clone()));
 
-  // Wait for a terminate signal
-  signal(SignalKind::terminate()).expect("stream error").recv().await;
-  if debug {
-    match kill_command {
-      Some(kill_command) => eprintln!("SIGTERM received! Sending kill command to the child: {}", kill_command),
-      None => eprintln!("SIGTERM received! Performing a clean shutdown"),
-    }
-  }
+  // Create a task that handles the child process exiting (this consumes the real
+  // child stdin)
+  task::spawn(wait_for_signal(child_stdin, kill_command, newline_before_kill, newline_after_kill, debug));
 
-  // Grab a lock on the child_stdin process (and don't ever release it)
-  let mut child_stdin = child_stdin.lock().await;
-
-  // Optionally write the newlines and kill-command
-  if newline_before_kill {
-    child_stdin.write_all("\n".as_bytes()).await.unwrap_or_else(|e| {
-      eprintln!("Error writing kill command to child: {}", e);
-      exit(1);
-    });
-  }
-  if let Some(kill_command) = kill_command {
-    child_stdin.write_all(kill_command.as_bytes()).await.unwrap_or_else(|e| {
-      eprintln!("Error writing kill command to child: {}", e);
-      exit(1);
-    });
-  }
-  if newline_after_kill {
-    child_stdin.write_all("\n".as_bytes()).await.unwrap_or_else(|e| {
-      eprintln!("Error writing kill command to child: {}", e);
-      exit(1);
-    });
-  }
-
-  if debug {
-    eprintln!("Waiting for child process to exit...");
-  }
-
-  // Wait for child to exit
+  // While the other tasks are running, wait for the child to exit
   let status = child.await;
   if debug {
     match status {
