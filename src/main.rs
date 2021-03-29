@@ -11,13 +11,23 @@ async fn input_task(child_stdin: Arc<Mutex<process::ChildStdin>>) {
   let mut lines = io::BufReader::new(io::stdin()).lines();
 
   loop {
-    let mut line = lines.next_line().await.unwrap_or_else(|e| {
-      eprintln!("Error reading from stdin: {}", e);
-      exit(1);
-    }).unwrap_or_else(|| {
-      eprintln!("Error reading from stdin: closed");
-      exit(1);
-    });
+    let line = lines.next_line().await;
+
+    let line = match line {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("WARNING: can't read from stdin: {}", e);
+            return;
+        },
+    };
+
+    let mut line = match line {
+        Some(l) => l,
+        None => {
+            eprintln!("WARNING: can't read from stdin: closed");
+            return;
+        },
+    };
     line.push('\n');
 
     child_stdin.lock().await.write_all(&line.into_bytes()).await.unwrap_or_else(|e| {
@@ -29,7 +39,7 @@ async fn input_task(child_stdin: Arc<Mutex<process::ChildStdin>>) {
 
 #[tokio::main]
 async fn main() {
-  let matches = App::new("netrat - a rust netcat implementation")
+  let matches = App::new("game-docker-wrapper")
     .author("Ron <ron@skullsecurity.net>")
     .version("1.0")
     .about("A wrapper for dockerizing game servers. Runs a given binary, catches SIGTERM (the signal used by Docker to terminate containers), and sends an exit command.")
