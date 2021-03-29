@@ -1,6 +1,6 @@
 [package]
 name = "game-docker-wrapper"
-version = "1.0.0"
+version = "1.0.2"
 authors = ["iagox86 <ron-git@skullsecurity.org>"]
 edition = "2018"
 
